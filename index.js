@@ -28,8 +28,9 @@ const Servicetrade = (options) => {
 	options = options || {};
 	options.baseUrl = options.baseUrl || 'https://api.servicetrade.com';
 
+	let jar = rp.jar();
 	const request = rp.defaults({
-		jar: true,
+		jar: jar,
 		baseUrl: options.baseUrl + '/api'
 	});
 
@@ -42,11 +43,17 @@ const Servicetrade = (options) => {
 
 	return {
 		login: (username, password) => {
+
 			let auth = {
 				username: username || options.username,
 				password: password || options.password
 			};
-			return jsonRequest.post('/auth', {body: auth});
+			return jsonRequest.post('/auth', {body: auth})
+				.catch(err => {
+					// clear bogus cookie from failed login attempt
+					jar = rp.jar();
+					throw(err);
+				});
 		},
 
 		logout: () => {
