@@ -1,7 +1,5 @@
-'use strict';
-
-const rp = require('request-promise');
-
+const axios = require('axios');
+const createAuthRefreshInterceptor = require('axios-auth-refresh');
 /**
  * Servicetrade
  *
@@ -23,74 +21,97 @@ const rp = require('request-promise');
  * 	- attach(params, file)
  *
  */
+
 const Servicetrade = (options) => {
+    options = options || {};
+    options.baseUrl = options.baseUrl || 'https://api.servicetrade.com';
 
-	options = options || {};
-	options.baseUrl = options.baseUrl || 'https://api.servicetrade.com';
+    const request = axios.create({
+        baseURL: options.baseUrl + '/api'
+    });
 
-	let jar = rp.jar();
-	const request = rp.defaults({
-		jar: jar,
-		baseUrl: options.baseUrl + '/api'
-	});
+    if (options.cookie) {
+        request.defaults.headers.Cookie = options.cookie;
+    }
 
-	const jsonRequest = request.defaults({
-		json: true,
-		transform: function(body) {
-			return body && body.data ? body.data : null;
-		}
-	});
+    if (!options.disableRefreshAuth) {
+        const refreshAuthLogic = function(failedRequest) {
+            request.defaults.headers.Cookie = null;
+            let auth = {
+                username: options.username,
+                password: options.password
+            };
+            return request.post('/auth', auth).catch((err) => {
+                request.defaults.headers.Cookie = null;
+                throw err;
+            });
+        };
+        createAuthRefreshInterceptor.default(request, refreshAuthLogic);
+    }
 
-	return {
-		login: (username, password) => {
+    request.interceptors.response.use(function(response) {
+        if (
+            !request.defaults.headers.Cookie ||
+            !Object.keys(request.defaults.headers.Cookie).length
+        ) {
+            const [cookie] = response.headers['set-cookie'];
+            request.defaults.headers.Cookie = cookie;
+        }
+        return response && response.data && response.data.data ? response.data.data : null;
+    });
 
-			let auth = {
-				username: username || options.username,
-				password: password || options.password
-			};
-			return jsonRequest.post('/auth', {body: auth})
-				.catch(err => {
-					// clear bogus cookie from failed login attempt
-					jar = rp.jar();
-					throw(err);
-				});
-		},
+    return {
+        login: (username, password) => {
+            let auth = {
+                username: username || options.username,
+                password: password || options.password
+            };
+            return request.post('/auth', auth).catch((err) => {
+                // clear bogus cookie from failed login attempt
+                request.defaults.headers.Cookie = null;
+                throw err;
+            });
+        },
 
-		logout: () => {
-			return jsonRequest.del('/auth');
-		},
+        logout: () => {
+            return request.delete('/auth');
+        },
 
-		get: (path) => {
-			return jsonRequest.get(path);
-		},
+        get: (path) => {
+            return request.get(path);
+        },
 
-		put: (path, postData) => {
-			return jsonRequest.put(path, {body: postData});
-		},
+        put: (path, postData) => {
+            return request.put(path, postData);
+        },
 
-		post: (path, postData) => {
-			return jsonRequest.post(path, {body: postData});
-		},
+        post: (path, postData) => {
+            return request.post(path, postData);
+        },
 
-		delete: (path) => {
-			return jsonRequest.del(path);
-		},
+        delete: (path) => {
+            return request.delete(path);
+        },
 
-		attach: (params, file) => {
-			let formData = params || {};
-			formData.uploadedFile = file;
+        attach: (params, file) => {
+            let formData = params || {};
+            formData.uploadedFile = file;
 
-			let options = {
-				uri: '/attachment',
-				formData: formData,
-				transform: (body) => {
-					var jsonBody = JSON.parse(body);
-					return jsonBody.data;
-				}
-			};
-			return request.post(options);
-		},
-	};
+            let options = {
+                uri: '/attachment',
+                formData: formData,
+                transform: (body) => {
+                    const jsonBody = JSON.parse(body);
+                    return jsonBody.data;
+                }
+            };
+            return request.post(options);
+        },
+
+        setCookie: (cookie) => {
+            request.defaults.headers.Cookie = cookie;
+        }
+    };
 };
 
-module.exports = exports = Servicetrade;
+module.exports = Servicetrade;

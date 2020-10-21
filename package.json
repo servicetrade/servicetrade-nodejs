@@ -1,6 +1,6 @@
 {
   "name": "servicetrade-nodejs",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "request": "^2.88.0",
-    "request-promise": "^4.2.2"
+    "axios": "^0.20.0",
+    "axios-auth-refresh": "^3.0.0",
   }
 }
