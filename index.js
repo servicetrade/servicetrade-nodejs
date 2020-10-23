@@ -1,7 +1,5 @@
-'use strict';
-
-const rp = require('request-promise');
-
+const axios = require('axios');
+const createAuthRefreshInterceptor = require('axios-auth-refresh');
 /**
  * Servicetrade
  *
@@ -23,74 +21,103 @@ const rp = require('request-promise');
  * 	- attach(params, file)
  *
  */
+
 const Servicetrade = (options) => {
+    options = options || {};
+    options.baseUrl = options.baseUrl || 'https://api.servicetrade.com';
 
-	options = options || {};
-	options.baseUrl = options.baseUrl || 'https://api.servicetrade.com';
+    let request = axios.create({
+        baseURL: options.baseUrl + '/api'
+    });
 
-	let jar = rp.jar();
-	const request = rp.defaults({
-		jar: jar,
-		baseUrl: options.baseUrl + '/api'
-	});
+    if (options.cookie) {
+        request.defaults.headers.Cookie = options.cookie;
+    }
 
-	const jsonRequest = request.defaults({
-		json: true,
-		transform: function(body) {
-			return body && body.data ? body.data : null;
-		}
-	});
+    if (!options.disableRefreshAuth) {
+        const refreshAuthLogic = async function(failedRequest) {
+            request.defaults.headers.Cookie = null;
 
-	return {
-		login: (username, password) => {
+            let auth = {
+                username: options.username,
+                password: options.password
+            };
+            try {
+                await request.post('/auth', auth);
+            } catch (e) {
+                request.defaults.headers.Cookie = null;
+                throw err;
+            }
+        };
+        createAuthRefreshInterceptor.default(request, refreshAuthLogic);
+    }
 
-			let auth = {
-				username: username || options.username,
-				password: password || options.password
-			};
-			return jsonRequest.post('/auth', {body: auth})
-				.catch(err => {
-					// clear bogus cookie from failed login attempt
-					jar = rp.jar();
-					throw(err);
-				});
-		},
+    request.interceptors.response.use(function(response) {
+        if (
+            !request.defaults.headers.Cookie ||
+            !Object.keys(request.defaults.headers.Cookie).length
+        ) {
+            if (response.headers && response.headers['set-cookie']) {
+                const [cookie] = response.headers['set-cookie'];
+                request.defaults.headers.Cookie = cookie;
+            }
+        }
 
-		logout: () => {
-			return jsonRequest.del('/auth');
-		},
+        // detect if it response which we have after refresh token
+        if (!response.config && !response.headers && !response.request) {
+            return response;
+        }
+        return response && response.data && response.data.data ? response.data.data : null;
+    });
 
-		get: (path) => {
-			return jsonRequest.get(path);
-		},
+    return {
+        setCookie: (cookie) => {
+            request.defaults.headers.Cookie = cookie;
+        },
 
-		put: (path, postData) => {
-			return jsonRequest.put(path, {body: postData});
-		},
+        login: (username, password) => {
+            let auth = {
+                username: username || options.username,
+                password: password || options.password
+            };
+            return request.post('/auth', auth).catch((err) => {
+                // clear bogus cookie from failed login attempt
+                request.defaults.headers.Cookie = null;
+                throw err;
+            });
+        },
 
-		post: (path, postData) => {
-			return jsonRequest.post(path, {body: postData});
-		},
+        logout: () => {
+            return request.delete('/auth');
+        },
 
-		delete: (path) => {
-			return jsonRequest.del(path);
-		},
+        get: (path) => {
+            return request.get(path);
+        },
 
-		attach: (params, file) => {
-			let formData = params || {};
-			formData.uploadedFile = file;
+        put: (path, postData) => {
+            return request.put(path, postData);
+        },
 
-			let options = {
-				uri: '/attachment',
-				formData: formData,
-				transform: (body) => {
-					var jsonBody = JSON.parse(body);
-					return jsonBody.data;
-				}
-			};
-			return request.post(options);
-		},
-	};
+        post: (path, postData) => {
+            return request.post(path, postData);
+        },
+
+        delete: (path) => {
+            return request.delete(path);
+        },
+
+        attach: (params, file) => {
+            let formData = params || {};
+            formData.uploadedFile = file;
+
+            const formDataConfig = {
+                headers: {'Content-Type': 'multipart/form-data' }
+            };
+
+            return request.post('/attachment', formData, formDataConfig);
+        }
+    };
 };
 
-module.exports = exports = Servicetrade;
+module.exports = Servicetrade;
