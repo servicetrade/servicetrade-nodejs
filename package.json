@@ -4,12 +4,17 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "assert": "^2.0.0",
     "axios": "^0.20.0",
     "axios-auth-refresh": "^3.0.0"
+  },
+  "devDependencies": {
+    "mocha": "^6.2.2",
+    "nock": "^11.7.0"
   }
 }

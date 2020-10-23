@@ -26,7 +26,7 @@ const Servicetrade = (options) => {
     options = options || {};
     options.baseUrl = options.baseUrl || 'https://api.servicetrade.com';
 
-    const request = axios.create({
+    let request = axios.create({
         baseURL: options.baseUrl + '/api'
     });
 
@@ -54,13 +54,27 @@ const Servicetrade = (options) => {
             !request.defaults.headers.Cookie ||
             !Object.keys(request.defaults.headers.Cookie).length
         ) {
-            const [cookie] = response.headers['set-cookie'];
-            request.defaults.headers.Cookie = cookie;
+            if (response.headers['set-cookie']) {
+                const [cookie] = response.headers['set-cookie'];
+                request.defaults.headers.Cookie = cookie;
+            }
         }
+
         return response && response.data && response.data.data ? response.data.data : null;
     });
 
     return {
+        getRequestObject: () => {
+          return request;
+        },
+        setRequestObject: (req) => {
+          request = req;
+        },
+
+        setCookie: (cookie) => {
+            request.defaults.headers.Cookie = cookie;
+        },
+
         login: (username, password) => {
             let auth = {
                 username: username || options.username,
@@ -97,19 +111,11 @@ const Servicetrade = (options) => {
             let formData = params || {};
             formData.uploadedFile = file;
 
-            let options = {
-                uri: '/attachment',
-                formData: formData,
-                transform: (body) => {
-                    const jsonBody = JSON.parse(body);
-                    return jsonBody.data;
-                }
+            const formDataConfig = {
+                headers: {'Content-Type': 'multipart/form-data' }
             };
-            return request.post(options);
-        },
 
-        setCookie: (cookie) => {
-            request.defaults.headers.Cookie = cookie;
+            return request.post('/attachment', formData, formDataConfig);
         }
     };
 };
