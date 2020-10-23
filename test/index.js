@@ -80,6 +80,37 @@ describe('Login tests', function() {
 		assert.deepEqual(loginResponse.authToken, 'aaaa5555yyyy');
 	});
 
+    it('Auth again if call return 401 error', async function() {
+        nock('https://test.host.com')
+            .get(`/api/job/100`)
+            .reply(401)
+
+            .get(`/api/job/100`)
+            .reply(200, {
+                data: {
+                    id: 100
+                }
+            })
+
+            .post('/api/auth', {
+                username: 'test_user',
+                password: 'test_pass',
+            })
+            .reply(200, {
+                data: {
+                    authenticated: true,
+                    authToken: 'aaaa5555yyyy'
+                }
+            }, {
+            	'set-cookie': 'aaaa5555yyyy'
+			});
+
+        const ST = Servicetrade(testOptions);
+        const jobResponse = await ST.get('/job/100');
+        assert.deepEqual(typeof jobResponse, 'object');
+        assert.deepEqual(jobResponse.id, 100);
+    });
+
 });
 
 describe('Logout tests', function() {

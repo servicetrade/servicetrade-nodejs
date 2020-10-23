@@ -35,16 +35,19 @@ const Servicetrade = (options) => {
     }
 
     if (!options.disableRefreshAuth) {
-        const refreshAuthLogic = function(failedRequest) {
+        const refreshAuthLogic = async function(failedRequest) {
             request.defaults.headers.Cookie = null;
+
             let auth = {
                 username: options.username,
                 password: options.password
             };
-            return request.post('/auth', auth).catch((err) => {
+            try {
+                await request.post('/auth', auth);
+            } catch (e) {
                 request.defaults.headers.Cookie = null;
                 throw err;
-            });
+            }
         };
         createAuthRefreshInterceptor.default(request, refreshAuthLogic);
     }
@@ -54,12 +57,16 @@ const Servicetrade = (options) => {
             !request.defaults.headers.Cookie ||
             !Object.keys(request.defaults.headers.Cookie).length
         ) {
-            if (response.headers['set-cookie']) {
+            if (response.headers && response.headers['set-cookie']) {
                 const [cookie] = response.headers['set-cookie'];
                 request.defaults.headers.Cookie = cookie;
             }
         }
 
+        // detect if it response which we have after refresh token
+        if (!response.config && !response.headers && !response.request) {
+            return response;
+        }
         return response && response.data && response.data.data ? response.data.data : null;
     });
 
