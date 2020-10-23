@@ -188,6 +188,7 @@ describe('Put tests', function() {
             .reply(200, { data: { id: 1234 } });
 
         const ST = Servicetrade(testOptions);
+        await ST.login();
         const jobItemResponse = await ST.put(`/jobitem/${jobItemId}`, { libitemId: 9876 });
         assert.deepEqual(jobItemResponse.id, 1234);
     });
@@ -201,6 +202,7 @@ describe('Put tests', function() {
             .reply(200, { id: 1234 });
 
         const ST = Servicetrade(testOptions);
+        await ST.login();
         const jobItemResponse = await ST.put(`/jobitem/${jobItemId}`, { libitemId: 9876 });
         assert.deepEqual(jobItemResponse, null);
     });
@@ -234,11 +236,11 @@ describe('Post tests', function() {
             .post('/api/auth')
             .reply(200)
 
-            .put(`/api/jobitem/${jobItemId}`, { libitemId: 9876 })
+            .post(`/api/jobitem/${jobItemId}`, { libitemId: 9876 })
             .reply(200, { id: 1234 });
 
         const ST = Servicetrade(testOptions);
-        const jobItemResponse = await ST.put(`/jobitem/${jobItemId}`, { libitemId: 9876 });
+        const jobItemResponse = await ST.post(`/jobitem/${jobItemId}`, { libitemId: 9876 });
         assert.deepEqual(jobItemResponse, null);
     });
 });
@@ -247,10 +249,15 @@ describe('Delete tests', function() {
     const testJobId = 100;
     it('delete job success', async function() {
         nock('https://test.host.com')
+            .post('/api/auth')
+            .reply(200)
+
             .delete(`/api/job/${testJobId}`)
             .reply(200, {});
 
+
         const ST = Servicetrade(testOptions);
+        await ST.login();
         const response = await ST.delete(`/job/${testJobId}`);
         assert.deepEqual(response, null);
     });
@@ -259,6 +266,9 @@ describe('Delete tests', function() {
 describe('Attach tests', function() {
     it('attach success', async function() {
         nock('https://test.host.com')
+            .post('/api/auth')
+            .reply(200)
+
     		.post('/api/attachment')
             .reply(200, {
                 data: {
@@ -280,6 +290,7 @@ describe('Attach tests', function() {
         };
 
         const ST = Servicetrade(testOptions);
+        await ST.login();
         const attachResponse = await ST.attach(
             {
                 purposeId: 1,
@@ -293,4 +304,17 @@ describe('Attach tests', function() {
         assert.deepEqual(attachResponse.uri, 'testUrl');
         assert.deepEqual(attachResponse.fileName, 'testFileName');
 	})
+});
+
+describe('setCookie tests', function() {
+    it('delete job success', async function() {
+        nock('https://test.host.com')
+            .delete(`/api/job/100`)
+			.matchHeader('cookie', 'testCookie')
+            .reply(200, {});
+
+        const ST = Servicetrade(testOptions);
+        ST.setCookie('testCookie');
+        await ST.delete(`/job/100`);
+    });
 });

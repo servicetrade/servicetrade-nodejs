@@ -71,13 +71,6 @@ const Servicetrade = (options) => {
     });
 
     return {
-        getRequestObject: () => {
-          return request;
-        },
-        setRequestObject: (req) => {
-          request = req;
-        },
-
         setCookie: (cookie) => {
             request.defaults.headers.Cookie = cookie;
         },
