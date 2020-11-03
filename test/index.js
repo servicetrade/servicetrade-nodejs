@@ -73,11 +73,19 @@ describe('Login tests', function() {
 				}
 			});
 
-        const ST = Servicetrade(testOptions);
+		let auth;
+        const ST = Servicetrade({
+            ...testOptions,
+            onSetCookie: (value) => {
+                auth = value;
+            }
+        });
 		const loginResponse = await ST.login();
 		assert.deepEqual(typeof loginResponse, 'object');
 		assert.deepEqual(loginResponse.authenticated, true);
 		assert.deepEqual(loginResponse.authToken, 'aaaa5555yyyy');
+        assert.deepEqual(auth.authenticated, true);
+        assert.deepEqual(auth.authToken, 'aaaa5555yyyy');
 	});
 
     it('Auth again if call return 401 error', async function() {

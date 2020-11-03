@@ -38,15 +38,25 @@ const Servicetrade = (options) => {
         const refreshAuthLogic = async function(failedRequest) {
             request.defaults.headers.Cookie = null;
 
+            if (options.onResetCookie) {
+                await options.onResetCookie();
+            }
+
             let auth = {
                 username: options.username,
                 password: options.password
             };
             try {
-                await request.post('/auth', auth);
+               const result = await request.post('/auth', auth);
+               if (options.onSetCookie) {
+                   await options.onSetCookie(result);
+               }
             } catch (e) {
                 request.defaults.headers.Cookie = null;
-                throw err;
+                if (options.onResetCookie) {
+                    await options.onResetCookie();
+                }
+                throw e;
             }
         };
         createAuthRefreshInterceptor.default(request, refreshAuthLogic);
@@ -75,16 +85,22 @@ const Servicetrade = (options) => {
             request.defaults.headers.Cookie = cookie;
         },
 
-        login: (username, password) => {
+        login: async (username, password) => {
             let auth = {
                 username: username || options.username,
                 password: password || options.password
             };
-            return request.post('/auth', auth).catch((err) => {
-                // clear bogus cookie from failed login attempt
+            let result;
+            try {
+               result = await request.post('/auth', auth);
+               if (options.onSetCookie) {
+                   await options.onSetCookie(result);
+               }
+            } catch (e) {
                 request.defaults.headers.Cookie = null;
-                throw err;
-            });
+                throw e;
+            }
+            return result;
         },
 
         logout: () => {
