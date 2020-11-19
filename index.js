@@ -1,5 +1,7 @@
 const axios = require('axios');
 const createAuthRefreshInterceptor = require('axios-auth-refresh');
+const FormData = require('form-data');
+
 /**
  * Servicetrade
  *
@@ -124,8 +126,12 @@ const Servicetrade = (options) => {
         },
 
         attach: (params, file) => {
-            let formData = params || {};
-            formData.uploadedFile = file;
+            let data = params || {};
+            const formData = new FormData();
+            for (let key of Object.keys(data)) {
+                formData.append(key, data[key]);
+            }
+            formData.append('uploadedFile', file.value, file.options.filename);
 
             const formDataConfig = {
                 headers: {'Content-Type': 'multipart/form-data' }
