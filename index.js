@@ -131,7 +131,7 @@ const Servicetrade = (options) => {
             for (let key of Object.keys(data)) {
                 formData.append(key, data[key]);
             }
-            formData.append('uploadedFile', JSON.stringify(file));
+            formData.append('uploadedFile', file.value, file.options);
 
             const formDataConfig = {
                 headers: {'Content-Type': 'multipart/form-data' }
