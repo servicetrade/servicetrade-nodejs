@@ -134,7 +134,10 @@ const Servicetrade = (options) => {
             formData.append('uploadedFile', file.value, file.options);
 
             const formDataConfig = {
-                headers: {'Content-Type': 'multipart/form-data' }
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+            	    ...formData.getHeaders()
+                }
             };
 
             return request.post('/attachment', formData, formDataConfig);
