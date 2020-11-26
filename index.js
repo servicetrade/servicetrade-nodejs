@@ -36,6 +36,10 @@ const Servicetrade = (options) => {
         request.defaults.headers.Cookie = options.cookie;
     }
 
+    if (options.userAgent) {
+        request.defaults.headers.UserAgent = options.userAgent;
+    }
+
     if (!options.disableRefreshAuth) {
         const refreshAuthLogic = async function(failedRequest) {
             request.defaults.headers.Cookie = null;
