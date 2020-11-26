@@ -315,7 +315,7 @@ describe('Attach tests', function() {
 });
 
 describe('setCookie tests', function() {
-    it('delete job success', async function() {
+    it('test setCookie success', async function() {
         nock('https://test.host.com')
             .delete(`/api/job/100`)
 			.matchHeader('cookie', 'testCookie')
@@ -323,6 +323,18 @@ describe('setCookie tests', function() {
 
         const ST = Servicetrade(testOptions);
         ST.setCookie('testCookie');
+        await ST.delete(`/job/100`);
+    });
+});
+
+describe('check userAgent header', function() {
+    it('test userAgent success', async function() {
+        nock('https://test.host.com')
+            .delete(`/api/job/100`)
+            .matchHeader('userAgent', 'Test UserAgent')
+            .reply(200, {});
+
+        const ST = Servicetrade({...testOptions, userAgent: 'Test UserAgent'});
         await ST.delete(`/job/100`);
     });
 });
