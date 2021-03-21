@@ -331,7 +331,7 @@ describe('check userAgent header', function() {
     it('test userAgent success', async function() {
         nock('https://test.host.com')
             .delete(`/api/job/100`)
-            .matchHeader('userAgent', 'Test UserAgent')
+            .matchHeader('User-Agent', 'Test UserAgent')
             .reply(200, {});
 
         const ST = Servicetrade({...testOptions, userAgent: 'Test UserAgent'});
