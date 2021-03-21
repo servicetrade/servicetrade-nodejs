@@ -37,7 +37,7 @@ const Servicetrade = (options) => {
     }
 
     if (options.userAgent) {
-        request.defaults.headers.UserAgent = options.userAgent;
+        request.defaults.headers['User-Agent'] = options.userAgent;
     }
 
     if (!options.disableRefreshAuth) {
