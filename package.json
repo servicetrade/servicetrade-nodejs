@@ -10,17 +10,16 @@
   "license": "ISC",
   "dependencies": {
     "assert": "2.0.0",
-    "axios": "0.21.1",
+    "axios": "^0.21.4",
     "axios-auth-refresh": "3.0.0",
     "form-data": "3.0.0"
   },
   "peerDependencies": {
-    "axios": "0.20.0",
     "axios-auth-refresh": "3.0.0",
     "form-data": "3.0.0"
   },
   "devDependencies": {
-    "mocha": "6.2.2",
+    "mocha": "^9.1.2",
     "nock": "11.7.0"
   }
 }
