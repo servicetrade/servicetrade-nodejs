@@ -37,12 +37,7 @@ ST.login()
 		console.log("ATTACHING TO JOB #" + job.number);
 
 		const fileToUpload = __dirname + '/example.pdf';
-		/** simple: read file from filesystem
-		const attachment = fs.createReadStream(fileToUpload);
-		*/
 
-		/** complicated: use node buffer
-		 */
 		// get a node buffer
 		const buffer = fs.readFileSync(fileToUpload);
 
