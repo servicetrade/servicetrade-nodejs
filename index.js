@@ -29,7 +29,8 @@ const Servicetrade = (options) => {
     options.baseUrl = options.baseUrl || 'https://api.servicetrade.com';
 
     let request = axios.create({
-        baseURL: options.baseUrl + '/api'
+        baseURL: options.baseUrl + '/api',
+        maxBodyLength: Infinity,
     });
 
     if (options.cookie) {
