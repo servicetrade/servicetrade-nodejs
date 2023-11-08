@@ -9,6 +9,7 @@ const FormData = require('form-data');
  *  - {String} options.baseUrl - The API base URL (without /api)
  *  - {String} options.username - The API username
  *  - {String} options.password - The API password
+ *  - {String} options.pathPrefix - The path prefix for the request (default: /api)
  *
  *  If options.username and options.password are not provided, username and password must be
  *  explicitly provided to login()
@@ -27,11 +28,14 @@ const FormData = require('form-data');
 const Servicetrade = (options) => {
     options = options || {};
     options.baseUrl = options.baseUrl || 'https://api.servicetrade.com';
+    options.pathPrefix = options.pathPrefix || '/api';
 
     let request = axios.create({
-        baseURL: options.baseUrl + '/api',
+        baseURL: options.baseUrl + options.pathPrefix,
         maxBodyLength: Infinity,
     });
+
+    const authEndpoint = `${options.pathPrefix ? '' : '/api'}/auth`;
 
     if (options.cookie) {
         request.defaults.headers.Cookie = options.cookie;
@@ -54,7 +58,7 @@ const Servicetrade = (options) => {
                 password: options.password
             };
             try {
-               const result = await request.post('/auth', auth);
+               const result = await request.post(authEndpoint, auth);
                if (options.onSetCookie) {
                    await options.onSetCookie(result);
                }
@@ -99,7 +103,7 @@ const Servicetrade = (options) => {
             };
             let result;
             try {
-               result = await request.post('/auth', auth);
+               result = await request.post(authEndpoint, auth);
                if (options.onSetCookie) {
                    await options.onSetCookie(result);
                }
@@ -111,7 +115,7 @@ const Servicetrade = (options) => {
         },
 
         logout: () => {
-            return request.delete('/auth');
+            return request.delete(authEndpoint);
         },
 
         get: (path) => {
