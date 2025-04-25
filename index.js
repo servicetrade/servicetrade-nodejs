@@ -75,8 +75,7 @@ const Servicetrade = (options) => {
             !Object.keys(request.defaults.headers.Cookie).length
         ) {
             if (response.headers && response.headers['set-cookie']) {
-                const [cookie] = response.headers['set-cookie'];
-                request.defaults.headers.Cookie = cookie;
+                request.defaults.headers.Cookie = response.headers['set-cookie'].find((ele) => ele.startsWith("PHPSESSID="));
             }
         }
 
