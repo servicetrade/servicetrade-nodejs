@@ -110,7 +110,7 @@ describe('Login tests', function() {
                     authToken: 'aaaa5555yyyy'
                 }
             }, {
-            	'set-cookie': 'aaaa5555yyyy'
+            	'set-cookie': ['PHPSESSID=aaaa5555yyyy']
 			});
 
         const ST = Servicetrade(testOptions);
