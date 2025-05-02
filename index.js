@@ -91,6 +91,10 @@ const Servicetrade = (options) => {
             request.defaults.headers.Cookie = cookie;
         },
 
+        setBearerToken: (bearerToken) => {
+            request.defaults.headers.Authorization = `Bearer ${bearerToken}`;
+        },
+
         login: async (username, password) => {
             let auth = {
                 username: username || options.username,
