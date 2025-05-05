@@ -327,6 +327,19 @@ describe('setCookie tests', function() {
     });
 });
 
+describe('setBearerToken tests', function() {
+    it('test setBearerToken success', async function() {
+        nock('https://test.host.com')
+            .delete(`/api/job/100`)
+            .matchHeader('Authorization', 'Bearer testBearerToken')
+            .reply(200, {});
+
+        const ST = Servicetrade(testOptions);
+        ST.setBearerToken('testBearerToken');
+        await ST.delete(`/job/100`);
+    });
+});
+
 describe('check userAgent header', function() {
     it('test userAgent success', async function() {
         nock('https://test.host.com')
