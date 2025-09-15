@@ -1,5 +1,5 @@
 const axios = require('axios');
-const createAuthRefreshInterceptor = require('axios-auth-refresh');
+const createAuthRefreshInterceptor = require('axios-auth-refresh').default;
 const FormData = require('form-data');
 
 /**
@@ -24,133 +24,210 @@ const FormData = require('form-data');
  *
  */
 
-const Servicetrade = (options) => {
-    options = options || {};
-    options.baseUrl = options.baseUrl || 'https://api.servicetrade.com';
+// Abstract class for a generic ST API client. Common for both PHPSESSID and OAuth2.
+// See below for Oauth2 vs PHPSESSID implementations.
+class ServicetradeApi {
+    constructor({
+        // URL of the API
+        baseUrl,
+        // callback when auth is initially set
+        onSetAuth,
+        // callback when auth is unset
+        onUnsetAuth,
+        // User-Agent value
+        userAgent,
+        // Do not set auth interceptor
+        disableRefreshAuth,
+    }) {
+        this.baseUrl = baseUrl || 'https://api.servicetrade.com';
+        this.authentication = null;
+        this._onSetAuth = onSetAuth;
+        this._onUnsetAuth = onUnsetAuth;
+        this.request = axios.create({
+            baseURL: this.baseUrl + '/api',
+            maxBodyLength: Infinity,
+            headers: {
+                'User-Agent': userAgent || 'Servicetrade Node.js SDK'
+            },
+        });
 
-    let request = axios.create({
-        baseURL: options.baseUrl + '/api',
-        maxBodyLength: Infinity,
-    });
+        this.request.interceptors.response.use(this.unpackResponse.bind(this));
 
-    if (options.cookie) {
-        request.defaults.headers.Cookie = options.cookie;
+        if (!disableRefreshAuth) {
+            createAuthRefreshInterceptor(this.request, this.refreshAuth.bind(this));
+        }
     }
 
-    if (options.userAgent) {
-        request.defaults.headers['User-Agent'] = options.userAgent;
+    async unpackResponse(response) {
+        return response?.data?.data || null;
     }
 
-    if (!options.disableRefreshAuth) {
-        const refreshAuthLogic = async function(failedRequest) {
-            request.defaults.headers.Cookie = null;
+    async onSetAuth(auth) {
+        return this._onSetAuth && this._onSetAuth(auth);
+    }
 
-            if (options.onResetCookie) {
-                await options.onResetCookie();
-            }
+    async onUnsetAuth(auth) {
+        return this._onUnsetAuth && this._onUnsetAuth(auth);
+    }
 
-            let auth = {
-                username: options.username,
-                password: options.password
-            };
-            try {
-               const result = await request.post('/auth', auth);
-               if (options.onSetCookie) {
-                   await options.onSetCookie(result);
-               }
-            } catch (e) {
-                request.defaults.headers.Cookie = null;
-                if (options.onResetCookie) {
-                    await options.onResetCookie();
-                }
-                throw e;
+    async refreshAuth() {
+        throw new Error('Not implemented');
+    }
+
+    async login() {
+        throw new Error('Not implemented');
+    }
+
+    async logout() {
+        throw new Error('Not implemented');
+    }
+
+    async get(path) {
+        return this.request.get(path);
+    }
+
+    async put(path, postData) {
+        return this.request.put(path, postData);
+    }
+
+    async post(path, postData) {
+        return this.request.post(path, postData);
+    }
+
+    async delete(path) {
+        return this.request.delete(path);
+    }
+
+    async attach(params, file) {
+        let data = params || {};
+        const formData = new FormData();
+        for (let key of Object.keys(data)) {
+            formData.append(key, data[key]);
+        }
+        formData.append('uploadedFile', file.value, file.options);
+
+        const formDataConfig = {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                ...formData.getHeaders()
             }
         };
-        createAuthRefreshInterceptor.default(request, refreshAuthLogic);
+
+        return this.request.post('/attachment', formData, formDataConfig);
+    }
+}
+
+class ServicetradePHPSessionAuth extends ServicetradeApi {
+    constructor({
+        username,
+        password,
+        cookie,
+        onSetCookie,
+        onResetCookie,
+        ...options
+    }) {
+        super(options);
+        this.creds = { username, password };
+        this._onSetAuth = onSetCookie;
+        this._onUnsetAuth = onResetCookie;
+
+        if (cookie) {
+            this.request.defaults.headers.Cookie = cookie;
+        }
     }
 
-    request.interceptors.response.use(function(response) {
-        if (
-            !request.defaults.headers.Cookie ||
-            !Object.keys(request.defaults.headers.Cookie).length
-        ) {
-            if (response.headers && response.headers['set-cookie']) {
-                request.defaults.headers.Cookie = response.headers['set-cookie'].find((ele) => ele.startsWith("PHPSESSID="));
-            }
+    async unpackResponse(response) {
+        // Capture set-cookies from responses. Update authentication if needed.
+        const newCookie = response?.headers?.['set-cookie'];
+        const curCookie = this.request.defaults.headers.Cookie;
+        if (newCookie !== undefined && newCookie !== curCookie) {
+            this.request.defaults.headers.Cookie = newCookie;
         }
 
-        // detect if it response which we have after refresh token
-        if (!response.config && !response.headers && !response.request) {
-            return response;
-        }
-        return response && response.data && response.data.data ? response.data.data : null;
-    });
+        return super.unpackResponse(response);
+    }
 
-    return {
-        setCookie: (cookie) => {
-            request.defaults.headers.Cookie = cookie;
-        },
+    async setCookie(cookie) {
+        this.request.defaults.headers.Cookie = cookie;
+    }
 
-        setBearerToken: (bearerToken) => {
-            request.defaults.headers.Authorization = `Bearer ${bearerToken}`;
-        },
+    async setBearerToken(token) {
+        this.request.defaults.headers.Authorization = `Bearer ${token}`;
+    }
 
-        login: async (username, password) => {
-            let auth = {
-                username: username || options.username,
-                password: password || options.password
+    async refreshAuth() {
+        this.request.defaults.headers.Cookie = null;
+        this.onUnsetAuth();
+        return this.login();
+    }
+
+    async login() {
+        const response = await this.request.post('/auth', this.creds);
+        await this.onSetAuth(response);
+        return response;
+    }
+
+    async logout() {
+        const result = await this.request.delete('/auth');
+        this.onUnsetAuth();
+        return result;
+    }
+}
+
+class ServicetradeOAuth2Auth extends ServicetradeApi {
+    constructor({
+        username,
+        password,
+        clientId,
+        clientSecret,
+        ...options
+    }) {
+        super(options);
+        this.creds = this.getCredentials(username, password, clientId, clientSecret);
+    }
+
+    getCredentials(username, password, clientId, clientSecret) {
+        if (clientId && clientSecret) {
+            return {
+                grant_type: 'client_credentials',
+                client_id: clientId,
+                client_secret: clientSecret,
             };
-            let result;
-            try {
-               result = await request.post('/auth', auth);
-               if (options.onSetCookie) {
-                   await options.onSetCookie(result);
-               }
-            } catch (e) {
-                request.defaults.headers.Cookie = null;
-                throw e;
-            }
-            return result;
-        },
-
-        logout: () => {
-            return request.delete('/auth');
-        },
-
-        get: (path) => {
-            return request.get(path);
-        },
-
-        put: (path, postData) => {
-            return request.put(path, postData);
-        },
-
-        post: (path, postData) => {
-            return request.post(path, postData);
-        },
-
-        delete: (path) => {
-            return request.delete(path);
-        },
-
-        attach: (params, file) => {
-            let data = params || {};
-            const formData = new FormData();
-            for (let key of Object.keys(data)) {
-                formData.append(key, data[key]);
-            }
-            formData.append('uploadedFile', file.value, file.options);
-
-            const formDataConfig = {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-            	    ...formData.getHeaders()
-                }
+        } else if (username && password) {
+            return {
+                grant_type: 'password',
+                username: username,
+                password: password,
             };
-
-            return request.post('/attachment', formData, formDataConfig);
+        } else {
+            throw new Error('Username and password or clientId and clientSecret are required');
         }
-    };
-};
+    }
+
+    async login() {
+        const result = await this.request.post('/oauth2/token', this.creds);
+        const token = result.access_token;
+        this.request.defaults.headers.Authorization = `Bearer ${token}`;
+        await this.onSetAuth(token);
+        return result;
+    }
+
+    async logout() {
+        this.request.defaults.headers.Authorization = null;
+        await this.onUnsetAuth();
+    }
+}
+
+function Servicetrade(options) {
+    if (options.oauth2 || options.clientId || options.clientSecret) {
+        return new ServicetradeOAuth2Auth(options);
+    }
+
+    if (options.username && options.password) {
+        return new ServicetradePHPSessionAuth(options);
+    }
+    throw new Error('Username and password are required');
+}
 
 module.exports = Servicetrade;
+module.exports.ServicetradeApi = ServicetradeApi;

@@ -1,68 +1,74 @@
-// CUSTOMIZE THESE TO MEET YOUR NEEDS
-const USERNAME = '';
-const PASSWORD = '';
-const BASE_URL = 'https://api.servicetrade.com';
-
-const ST = require('./index')({
-	baseUrl: BASE_URL,
-	username: USERNAME,
-	password: PASSWORD
-});
 const fs = require('fs');
 
-// LOG IN
-ST.login()
+// CUSTOMIZE THESE TO MEET YOUR NEEDS
+const BASE_URL = process.env.BASE_URL;
+const USERNAME = process.env.USERNAME;
+const PASSWORD = process.env.PASSWORD;
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
 
-	// GET LIST OF JOBS AND RETURN FIRST JOB FOUND
-	.then(function() {
-		return ST.get('/job').then(function(c) {
-			var job = c.jobs[0];
-			return job;
-		})
-	})
 
-	// UPDATE PO # ON JOB
-	.then(function(job) {
-		console.log("UPDATING JOB #" + job.number);
+async function main() {
+	// PHPSesssion Auth
+	const ST = require('./index.js')({
+	    baseUrl: BASE_URL,
+	    username: USERNAME,
+	    password: PASSWORD,
+	    onSetCookie: (value) => console.log('onSetCookie', value),
+	    onResetCookie: (value) => console.log('onResetCookie', value)
+    });
+    await runExample(ST);
 
-		const postData = {
-			customerPo: 'PO #' + Math.random(),
-		};
+    const ST2 = require('./index.js')({
+	    baseUrl: BASE_URL,
+	    oauth2: true,
+	    clientId: CLIENT_ID,
+	    clientSecret: CLIENT_SECRET,
+	    onSetAuth: (value) => console.log('onSetAuth', value),
+	   onUnsetAuth: (value) => console.log('onUnsetAuth', value)
+    });
+	await runExample(ST2);
+}
 
-		return ST.put('/job/' + job.id, postData);
-	})
+async function runExample(client) {
+	console.log("Running with auth type: " + client.constructor.name);
+    await client.login();
 
-	// ATTACH FILE TO JOB
-	.then(function(job) {
-		console.log("ATTACHING TO JOB #" + job.number);
+	console.log("GETTING JOB");
+	const jobs = await client.get('/job');
+	const job = jobs.jobs[0];
 
-		const fileToUpload = __dirname + '/example.pdf';
-
-		// get a node buffer
-		const buffer = fs.readFileSync(fileToUpload);
-
-		// construct an file object with it
-		const attachment = {
-			value: buffer,
-			options: {
-				filename: 'whatever.pdf',
-				contentType: 'application/pdf'
-			}
-		};
-
-		const params = {
-			entityId: job.id,
-			entityType: 3,
-			purposeId: 7
-		};
-
-		return ST.attach(params, attachment);
-	})
-
-	// LOG OUT
-	.then(function() {
-		console.log("ALL DONE, LOGGING OUT");
-
-		return ST.logout();
+	console.log("UPDATING JOB #" + job.number);
+	await client.put('/job/' + job.id, {
+		customerPo: 'PO #' + Math.random(),
 	});
 
+	console.log("ATTACHING TO JOB #" + job.number);
+	const fileToUpload = __dirname + '/example.pdf';
+	// get a node buffer
+	const buffer = fs.readFileSync(fileToUpload);
+
+	// construct an file object with it
+	const attachment = {
+		value: buffer,
+		options: {
+			filename: 'whatever.pdf',
+			contentType: 'application/pdf'
+		}
+	};
+
+	const params = {
+		entityId: job.id,
+		entityType: 3,
+		purposeId: 7
+	};
+
+	await client.attach(params, attachment);
+
+	console.log("ALL DONE, LOGGING OUT");
+	await client.logout();
+
+	console.log("DONE");
+}
+
+main();
