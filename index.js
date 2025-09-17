@@ -73,7 +73,7 @@ class ServicetradeApi {
             delete response.data.data;
             return response.data;
         } else {
-            return response?.data?.data || null;
+            return response && response.data && response.data.data || null;
         }
     }
 
@@ -153,7 +153,7 @@ class ServicetradePHPSessionAuth extends ServicetradeApi {
 
     async unpackResponse(response) {
         // Capture set-cookies from responses. Update authentication if needed.
-        const newCookie = response?.headers?.['set-cookie'];
+        const newCookie = response && response.headers && response.headers['set-cookie'];
         const curCookie = this.request.defaults.headers.Cookie;
         if (newCookie !== undefined && newCookie !== curCookie) {
             this.request.defaults.headers.Cookie = newCookie;
