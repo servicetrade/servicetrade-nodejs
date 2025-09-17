@@ -30,6 +30,8 @@ class ServicetradeApi {
     constructor({
         // URL of the API
         baseUrl,
+        // Optional api prefix to use instead of /api
+        apiPrefix,
         // Optional callback when auth is initially set. Passes the auth return.
         onSetAuth,
         // Optional callback, called when auth is unset. No args passed.
@@ -40,11 +42,12 @@ class ServicetradeApi {
         disableRefreshAuth,
     }) {
         this.baseUrl = baseUrl || 'https://api.servicetrade.com';
+        this.apiPrefix = apiPrefix || '/api';
         this.authentication = null;
         this._onSetAuth = onSetAuth;
         this._onUnsetAuth = onUnsetAuth;
         this.request = axios.create({
-            baseURL: this.baseUrl + '/api',
+            baseURL: this.baseUrl + this.apiPrefix,
             maxBodyLength: Infinity,
             headers: {
                 'User-Agent': userAgent || 'Servicetrade Node.js SDK'
@@ -64,12 +67,11 @@ class ServicetradeApi {
 
     async unpackResponse(response) {
         if (response.config.url === '/oauth2/token') {
-            return {
-                access_token: response.data.access_token,
-                expires_in: response.data.expires_in,
-                token_type: response.data.token_type,
-                scope: response.data.scope,
-            };
+            // Remove standard ST API response field and return the root.
+            // See notes on the /oauth2/token endpoint for why this is necessary.
+            delete response.data.meta;
+            delete response.data.data;
+            return response.data;
         } else {
             return response?.data?.data || null;
         }

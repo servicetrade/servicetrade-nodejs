@@ -111,6 +111,20 @@ describe('Legacy PHPSESSID Tests', function() {
 		    assert.deepEqual(ret, {authenticated: true, authToken: 'BASE_URL_AUTH_TOKEN'});
 	    });
 
+        it('should call the onSetAuth callback if provided', async function() {
+            let authCallbackCalled = false;
+            const ST = new ServicetradeLegacySDK({ baseUrl: BASE_URL, ...goodCreds, onSetAuth: (auth) => { authCallbackCalled = true; }});
+            await ST.login();
+            assert.deepEqual(authCallbackCalled, true);
+        });
+
+        it('should respect the legacy name of onSetCookie for onSetAuth callback', async function() {
+            let authCallbackCalled = false;
+            const ST = new ServicetradeLegacySDK({ baseUrl: BASE_URL, ...goodCreds, onSetCookie: (auth) => { authCallbackCalled = true; }});
+            await ST.login();
+            assert.deepEqual(authCallbackCalled, true);
+        });
+
         it('should respect the set-cookie header to set the cookie', async function() {
             const ST = new ServicetradeLegacySDK({ baseUrl: BASE_URL, ...goodCreds });
             await ST.login();
@@ -226,6 +240,22 @@ describe('Legacy PHPSESSID Tests', function() {
             assert.deepEqual(jobNock.callCount, 1);
             assert.deepEqual(jobNock.request[0].headers['user-agent'], 'Test UserAgent');
         });
+
+        it('should call the onUnsetAuth callback if provided', async function() {
+            let authCallbackCalled = false;
+            const ST = new ServicetradeLegacySDK({ baseUrl: BASE_URL, ...goodCreds, onUnsetAuth: () => { authCallbackCalled = true; }});
+            await ST.login();
+            await ST.logout();
+            assert.deepEqual(authCallbackCalled, true);
+        });
+
+        it('should respect the legacy name of onResetCookie for onUnsetAuth callback', async function() {
+            let authCallbackCalled = false;
+            const ST = new ServicetradeLegacySDK({ baseUrl: BASE_URL, ...goodCreds, onResetCookie: () => { authCallbackCalled = true; }});
+            await ST.login();
+            await ST.logout();
+            assert.deepEqual(authCallbackCalled, true);
+        });
     });
 
     describe('Logout tests', function() {
@@ -255,122 +285,9 @@ describe('Legacy PHPSESSID Tests', function() {
             assert.deepEqual(n.logoutFailureOnAltUrl.callCount, 1);
         });
     });
-
-    const methodsThatAcceptParams = ['post', 'put'];
-    for (const method of ['get', 'put', 'post', 'delete']) {
-        describe(`${method} tests`, function() {
-            const testJobId = 100;
-            const testJobWithNoDataId = 101;
-
-            it('should get job successfully, should unpack and return only data.data object', async function() {
-                createNock({
-                    url: BASE_URL,
-                    method,
-                    endpoint: `/api/job/${testJobId}`,
-                    rc: 200,
-                    data: {data: {id: testJobId}},
-                    params: undefined,
-                })
-
-                const ST = new ServicetradeLegacySDK({ baseUrl: BASE_URL, ...goodCreds });
-                await ST.login();
-                const jobResponse = await ST[method](`job/${testJobId}`);
-                assert.deepEqual(jobResponse.id, testJobId);
-            });
-
-            if (methodsThatAcceptParams.includes(method)) {
-                it('should accept params and pass them to the request in the body', async function() {
-                    const n = createNock({
-                        url: BASE_URL,
-                        method,
-                        endpoint: `/api/job/${testJobId}`,
-                        rc: 200,
-                        data: {data: {id: testJobId}},
-                        params: {id: testJobId},
-                    })
-
-                    const ST = new ServicetradeLegacySDK({ baseUrl: BASE_URL, ...goodCreds });
-                    await ST.login();
-                    const jobResponse = await ST[method](`job/${testJobId}`, {id: testJobId});
-                    assert.deepEqual(n.request[0].body, {id: testJobId});
-                    assert.deepEqual(jobResponse.id, testJobId);
-                });
-            } else {
-                it('should not accept params and ignore extra params', async function() {
-                    const n = createNock({
-                        url: BASE_URL,
-                        method,
-                        endpoint: `/api/job/${testJobId}`,
-                        rc: 200,
-                        data: {data: {id: testJobId}},
-                        params: undefined,
-                    })
-
-                    const ST = new ServicetradeLegacySDK({ baseUrl: BASE_URL, ...goodCreds });
-                    await ST.login();
-                    const jobResponse = await ST[method](`job/${testJobId}`, {id: testJobId});
-                    assert.deepEqual(n.request[0].body, '');
-                    assert.deepEqual(jobResponse.id, testJobId);
-                });
-            }
-
-            it('should return null if the response has no data property', async function() {
-                createNock({
-                    url: BASE_URL,
-                    method,
-                    endpoint: `/api/job/${testJobWithNoDataId}`,
-                    rc: 200,
-                    data: {id: testJobWithNoDataId},
-                    params: undefined,
-                })
-                const ST = new ServicetradeLegacySDK({ baseUrl: BASE_URL, ...goodCreds });
-                await ST.login();
-                const jobResponse = await ST[method](`job/${testJobWithNoDataId}`);
-                assert.deepEqual(jobResponse, null);
-            });
-        });
-    };
-
-    describe('attach tests', function() {
-        it('should attach successfully', async function() {
-            createNock({
-                url: BASE_URL,
-                method: 'post',
-                endpoint: '/api/attachment',
-                rc: 200,
-                data: {data: {id: 1, uri: 'testUrl', fileName: 'testFileName'}},
-                params: undefined,
-            });
-
-            const imgBuffer = Buffer.from('test', 'base64');
-
-            const imgAttachment = {
-                value: imgBuffer,
-                options: {
-                    filename: 'deficiency.jpg',
-                    contentType: 'image/jpeg'
-                }
-            }
-
-            const ST = new ServicetradeLegacySDK({ baseUrl: BASE_URL, ...goodCreds });
-            await ST.login();
-            const attachResponse = await ST.attach(
-                {
-                    purposeId: 1,
-                    entityId: 1,
-                    entityType: 1,
-                    description: 'description'
-                },
-                imgAttachment
-            );
-            assert.deepEqual(attachResponse.id, 1);
-            assert.deepEqual(attachResponse.uri, 'testUrl');
-            assert.deepEqual(attachResponse.fileName, 'testFileName');
-        });
-    });
 });
 
-describe('Oath2 token tests', function() {
+describe('OAuth2 token tests', function() {
 
     const n = {};
 
@@ -464,6 +381,13 @@ describe('Oath2 token tests', function() {
             assert.deepEqual(ST.request.defaults.headers.Cookie, undefined);
         });
 
+        it('should call the onSetAuth callback if provided', async function() {
+            let authCallbackCalled = false;
+            const ST = new ServicetradeSDK({ baseUrl: BASE_URL, ...goodCreds, onSetAuth: (auth) => { authCallbackCalled = true; }});
+            await ST.login();
+            assert.deepEqual(authCallbackCalled, true);
+        });
+
 	    it('should throw error if login fails', async function() {
             const ST = new ServicetradeSDK({ baseUrl: BASE_URL, ...badCreds });
             const e = await catchError(() => ST.login());
@@ -494,7 +418,7 @@ describe('Oath2 token tests', function() {
             assert.deepEqual(jobNock.request[0].headers['x-m2m-auth'], 'Bearer 1234567890');
         });
 
-        it('should attempt to use passed in tokenif provided to constructor', async function() {
+        it('should attempt to use passed in token if provided to constructor', async function() {
             const ST = new ServicetradeSDK({ baseUrl: ALT_BASE_URL, ...altCreds, token: 'CACHED_TOKEN' });
             const jobNock = createNock({
                 url: ALT_BASE_URL,
@@ -587,6 +511,14 @@ describe('Oath2 token tests', function() {
             assert.deepEqual(ST.request.defaults.headers.Authorization, null);
         });
 
+        it('should call the onUnsetAuth callback if provided', async function() {
+            let authCallbackCalled = false;
+            const ST = new ServicetradeSDK({ baseUrl: BASE_URL, ...goodCreds, onUnsetAuth: () => { authCallbackCalled = true; }});
+            await ST.login();
+            await ST.logout();
+            assert.deepEqual(authCallbackCalled, true);
+        });
+
         it('should throw error if logout fails', async function() {
             const ST = new ServicetradeSDK({ baseUrl: ALT_BASE_URL, ...altCreds });
             await ST.login();
@@ -597,8 +529,12 @@ describe('Oath2 token tests', function() {
             assert.deepEqual(n.logoutFailureOnAltUrl.request[0].headers['authorization'], 'Bearer ALT_BASE_URL_AUTH_TOKEN');
         });
     });
+});
 
+describe('Common functionality tests', function() {
+    const goodCreds = { clientId: 'good_client_id', clientSecret: 'good_client_secret' };
     const methodsThatAcceptParams = ['post', 'put'];
+
     for (const method of ['get', 'put', 'post', 'delete']) {
         describe(`${method} tests`, function() {
             const testJobId = 100;
@@ -615,7 +551,6 @@ describe('Oath2 token tests', function() {
                 })
 
                 const ST = new ServicetradeSDK({ baseUrl: BASE_URL, ...goodCreds });
-                await ST.login();
                 const jobResponse = await ST[method](`job/${testJobId}`);
                 assert.deepEqual(jobResponse.id, testJobId);
             });
@@ -632,7 +567,6 @@ describe('Oath2 token tests', function() {
                     })
 
                     const ST = new ServicetradeSDK({ baseUrl: BASE_URL, ...goodCreds });
-                    await ST.login();
                     const jobResponse = await ST[method](`job/${testJobId}`, {id: testJobId});
                     assert.deepEqual(n.request[0].body, {id: testJobId});
                     assert.deepEqual(jobResponse.id, testJobId);
@@ -649,7 +583,6 @@ describe('Oath2 token tests', function() {
                     })
 
                     const ST = new ServicetradeSDK({ baseUrl: BASE_URL, ...goodCreds });
-                    await ST.login();
                     const jobResponse = await ST[method](`job/${testJobId}`, {id: testJobId});
                     assert.deepEqual(n.request[0].body, '');
                     assert.deepEqual(jobResponse.id, testJobId);
@@ -666,9 +599,24 @@ describe('Oath2 token tests', function() {
                     params: undefined,
                 })
                 const ST = new ServicetradeSDK({ baseUrl: BASE_URL, ...goodCreds });
-                await ST.login();
                 const jobResponse = await ST[method](`job/${testJobWithNoDataId}`);
                 assert.deepEqual(jobResponse, null);
+            });
+
+            it('should call endpoint with correct api prefix', async function() {
+                const n = createNock({
+                    url: BASE_URL,
+                    method,
+                    endpoint: `/api/v2/job/${testJobId}`,
+                    rc: 200,
+                    data: {data: {id: 'ALTERNATIVE_API_PREFIX'}},
+                    params: undefined,
+                })
+                const ST = new ServicetradeSDK({ baseUrl: BASE_URL, ...goodCreds, apiPrefix: '/api/v2', token: 'BASE_URL_AUTH_TOKEN' });
+                const jobResponse = await ST[method](`job/${testJobId}`);
+                assert.deepEqual(jobResponse.id, 'ALTERNATIVE_API_PREFIX');
+                assert.deepEqual(n.wasCalled, true);
+                assert.deepEqual(n.request[0].headers['authorization'], 'Bearer BASE_URL_AUTH_TOKEN');
             });
         });
     };
@@ -695,7 +643,6 @@ describe('Oath2 token tests', function() {
             }
 
             const ST = new ServicetradeSDK({ baseUrl: BASE_URL, ...goodCreds });
-            await ST.login();
             const attachResponse = await ST.attach(
                 {
                     purposeId: 1,
