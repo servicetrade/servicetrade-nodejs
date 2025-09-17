@@ -30,9 +30,9 @@ class ServicetradeApi {
     constructor({
         // URL of the API
         baseUrl,
-        // callback when auth is initially set
+        // Optional callback when auth is initially set. Passes the auth return.
         onSetAuth,
-        // callback when auth is unset
+        // Optional callback, called when auth is unset. No args passed.
         onUnsetAuth,
         // User-Agent value
         userAgent,
@@ -58,16 +58,29 @@ class ServicetradeApi {
         }
     }
 
+    setCustomHeaders(key, value) {
+        this.request.defaults.headers[key] = value;
+    }
+
     async unpackResponse(response) {
-        return response?.data?.data || null;
+        if (response.config.url === '/oauth2/token') {
+            return {
+                access_token: response.data.access_token,
+                expires_in: response.data.expires_in,
+                token_type: response.data.token_type,
+                scope: response.data.scope,
+            };
+        } else {
+            return response?.data?.data || null;
+        }
     }
 
     async onSetAuth(auth) {
-        return this._onSetAuth && this._onSetAuth(auth);
+        this._onSetAuth && this._onSetAuth(auth);
     }
 
-    async onUnsetAuth(auth) {
-        return this._onUnsetAuth && this._onUnsetAuth(auth);
+    async onUnsetAuth() {
+        this._onUnsetAuth && this._onUnsetAuth();
     }
 
     async refreshAuth() {
@@ -128,8 +141,8 @@ class ServicetradePHPSessionAuth extends ServicetradeApi {
     }) {
         super(options);
         this.creds = { username, password };
-        this._onSetAuth = onSetCookie;
-        this._onUnsetAuth = onResetCookie;
+        this._onSetAuth = onSetCookie || this._onSetAuth;
+        this._onUnsetAuth = onResetCookie || this._onUnsetAuth;
 
         if (cookie) {
             this.request.defaults.headers.Cookie = cookie;
@@ -151,24 +164,21 @@ class ServicetradePHPSessionAuth extends ServicetradeApi {
         this.request.defaults.headers.Cookie = cookie;
     }
 
-    async setBearerToken(token) {
-        this.request.defaults.headers.Authorization = `Bearer ${token}`;
-    }
-
     async refreshAuth() {
         this.request.defaults.headers.Cookie = null;
         this.onUnsetAuth();
-        return this.login();
+        return await this.login();
     }
 
     async login() {
         const response = await this.request.post('/auth', this.creds);
-        await this.onSetAuth(response);
+        this.onSetAuth(response);
         return response;
     }
 
     async logout() {
         const result = await this.request.delete('/auth');
+        this.request.defaults.headers.Cookie = null;
         this.onUnsetAuth();
         return result;
     }
@@ -180,54 +190,56 @@ class ServicetradeOAuth2Auth extends ServicetradeApi {
         password,
         clientId,
         clientSecret,
+        token,
         ...options
     }) {
         super(options);
         this.creds = this.getCredentials(username, password, clientId, clientSecret);
+
+        if (token) {
+            this.request.defaults.headers.authorization = `Bearer ${token}`;
+        }
     }
 
-    getCredentials(username, password, clientId, clientSecret) {
-        if (clientId && clientSecret) {
-            return {
-                grant_type: 'client_credentials',
-                client_id: clientId,
-                client_secret: clientSecret,
-            };
-        } else if (username && password) {
-            return {
-                grant_type: 'password',
-                username: username,
-                password: password,
-            };
-        } else {
-            throw new Error('Username and password or clientId and clientSecret are required');
+    getCredentials(username, password, client_id, client_secret) {
+        if (client_id && client_secret) {
+            const grant_type = 'client_credentials';
+            return { grant_type, client_id, client_secret };
         }
+
+        if (username && password) {
+            const grant_type = 'password';
+            return { grant_type, username, password };
+        }
+
+        throw new Error('Username and password or clientId and clientSecret are required');
     }
 
     async login() {
         const result = await this.request.post('/oauth2/token', this.creds);
         const token = result.access_token;
         this.request.defaults.headers.Authorization = `Bearer ${token}`;
-        await this.onSetAuth(token);
+        this.onSetAuth(token);
         return result;
     }
 
     async logout() {
+        const result = await this.request.post('/oauth2/revoke');
         this.request.defaults.headers.Authorization = null;
-        await this.onUnsetAuth();
+        this.onUnsetAuth();
+    }
+
+    async refreshAuth() {
+        this.request.defaults.headers.Authorization = null;
+        this.onUnsetAuth();
+        return this.login();
     }
 }
 
 function Servicetrade(options) {
-    if (options.oauth2 || options.clientId || options.clientSecret) {
-        return new ServicetradeOAuth2Auth(options);
-    }
-
-    if (options.username && options.password) {
-        return new ServicetradePHPSessionAuth(options);
-    }
-    throw new Error('Username and password are required');
+    return new ServicetradeOAuth2Auth(options);
 }
 
 module.exports = Servicetrade;
-module.exports.ServicetradeApi = ServicetradeApi;
+module.exports.ServicetradeSDK = ServicetradeOAuth2Auth;
+module.exports.ServicetradeLegacySDK = ServicetradePHPSessionAuth;

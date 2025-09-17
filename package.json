@@ -1,6 +1,6 @@
 {
   "name": "servicetrade-nodejs",
-  "version": "1.0.10",
+  "version": "2.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
