@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { ServicetradeSDK, ServicetradeLegacySDK } = require('./index.js');
 
 // CUSTOMIZE THESE TO MEET YOUR NEEDS
 const BASE_URL = process.env.BASE_URL;
@@ -10,7 +11,7 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 
 async function main() {
 	// PHPSesssion Auth
-	const ST = require('./index.js')({
+	const ST = new ServicetradeLegacySDK({
 	    baseUrl: BASE_URL,
 	    username: USERNAME,
 	    password: PASSWORD,
@@ -19,9 +20,8 @@ async function main() {
     });
     await runExample(ST);
 
-    const ST2 = require('./index.js')({
+    const ST2 = new ServicetradeSDK({
 	    baseUrl: BASE_URL,
-	    oauth2: true,
 	    clientId: CLIENT_ID,
 	    clientSecret: CLIENT_SECRET,
 	    onSetAuth: (value) => console.log('onSetAuth', value),
