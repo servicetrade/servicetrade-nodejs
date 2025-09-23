@@ -10,16 +10,7 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 
 
 async function main() {
-	// PHPSesssion Auth
-	const ST = new ServicetradeLegacySDK({
-	    baseUrl: BASE_URL,
-	    username: USERNAME,
-	    password: PASSWORD,
-	    onSetCookie: (value) => console.log('onSetCookie', value),
-	    onResetCookie: (value) => console.log('onResetCookie', value)
-    });
-    await runExample(ST);
-
+	// SDK Example
     const ST2 = new ServicetradeSDK({
 	    baseUrl: BASE_URL,
 	    clientId: CLIENT_ID,
@@ -28,6 +19,16 @@ async function main() {
 	   onUnsetAuth: (value) => console.log('onUnsetAuth', value)
     });
 	await runExample(ST2);
+
+	// Legacy PHPSesssion Auth
+	const ST = new ServicetradeLegacySDK({
+	    baseUrl: BASE_URL,
+	    username: USERNAME,
+	    password: PASSWORD,
+	    onSetCookie: (value) => console.log('onSetCookie', value),
+	    onResetCookie: (value) => console.log('onResetCookie', value)
+    });
+    await runExample(ST);
 }
 
 async function runExample(client) {
