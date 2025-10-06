@@ -95,6 +95,10 @@ const Servicetrade = (options) => {
             request.defaults.headers.Authorization = `Bearer ${bearerToken}`;
         },
 
+        setCustomHeader: (key, value) => {
+            request.defaults.headers[key] = value;
+        },
+
         login: async (username, password) => {
             let auth = {
                 username: username || options.username,

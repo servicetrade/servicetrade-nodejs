@@ -351,3 +351,52 @@ describe('check userAgent header', function() {
         await ST.delete(`/job/100`);
     });
 });
+
+describe('setCustomHeader tests', function() {
+    it('test setCustomHeader success', async function() {
+        nock('https://test.host.com')
+            .delete(`/api/job/100`)
+            .matchHeader('X-Custom-Header', 'customValue')
+            .reply(200, {});
+
+        const ST = Servicetrade(testOptions);
+        ST.setCustomHeader('X-Custom-Header', 'customValue');
+        await ST.delete(`/job/100`);
+    });
+
+    it('test setCustomHeader with multiple headers', async function() {
+        nock('https://test.host.com')
+            .delete(`/api/job/100`)
+            .matchHeader('X-API-Key', 'apiKey123')
+            .matchHeader('X-Client-Version', '1.0.0')
+            .reply(200, {});
+
+        const ST = Servicetrade(testOptions);
+        ST.setCustomHeader('X-API-Key', 'apiKey123');
+        ST.setCustomHeader('X-Client-Version', '1.0.0');
+        await ST.delete(`/job/100`);
+    });
+
+    it('test setCustomHeader overwrites existing header', async function() {
+        nock('https://test.host.com')
+            .delete(`/api/job/100`)
+            .matchHeader('X-Custom-Header', 'newValue')
+            .reply(200, {});
+
+        const ST = Servicetrade(testOptions);
+        ST.setCustomHeader('X-Custom-Header', 'originalValue');
+        ST.setCustomHeader('X-Custom-Header', 'newValue');
+        await ST.delete(`/job/100`);
+    });
+
+    it('test setCustomHeader with empty value', async function() {
+        nock('https://test.host.com')
+            .delete(`/api/job/100`)
+            .matchHeader('X-Empty-Header', '')
+            .reply(200, {});
+
+        const ST = Servicetrade(testOptions);
+        ST.setCustomHeader('X-Empty-Header', '');
+        await ST.delete(`/job/100`);
+    });
+});
