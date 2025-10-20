@@ -39,12 +39,13 @@ export default abstract class ServicetradeClient<T> {
         this.onUnsetAuth     = options.onUnsetAuth     ?? NOOP;
         this.autoRefreshAuth = options.autoRefreshAuth ?? true;
 
-        this.request.interceptors.response.use(this.unpackResponse.bind(this));
         this.request = axios.create({
             baseURL: this.baseUrl + this.apiPrefix,
             maxBodyLength: Infinity,
             headers: { 'User-Agent': this.userAgent },
         });
+
+        this.request.interceptors.response.use(this.unpackResponse.bind(this));
 
         if (this.autoRefreshAuth) {
             createAuthRefreshInterceptor(this.request, this.refreshAuth.bind(this));
@@ -80,7 +81,7 @@ export default abstract class ServicetradeClient<T> {
         return this.request.delete(path) as unknown as ServicetradeClientResponse;
     }
 
-    async attach(params: Record<string, any>, file: FileAttachment) {
+    async attach(params: Record<string, any>, file: FileAttachment): Promise<ServicetradeClientResponse> {
         let data = params || {};
         const formData = new FormData();
         for (let key of Object.keys(data)) {
@@ -95,7 +96,7 @@ export default abstract class ServicetradeClient<T> {
             }
         };
 
-        return this.request.post<ServicetradeClientResponse>('/attachment', formData, formDataConfig);
+        return this.request.post('/attachment', formData, formDataConfig) as unknown as ServicetradeClientResponse;
     }
 
     async login() {

@@ -42,8 +42,8 @@ export default class ServicetradePHPSessionAuth extends ServicetradeClient<PHPSe
     }
 
     async doLogin() {
-        const response = await this.request.post('/auth', this.creds);
-        return response.data.token;
+        const response = await this.request.post('/auth', this.creds) as any;
+        return response.token;
     }
 
     async doLogout() {

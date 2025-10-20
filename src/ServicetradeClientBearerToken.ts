@@ -40,8 +40,8 @@ export default class ServicetradeClientBearerToken extends ServicetradeClient<Be
 
 
     async doLogin() {
-        const result = await this.request.post('/oauth2/token', this.creds);
-        return result.data.access_token;
+        const result = await this.request.post('/oauth2/token', this.creds) as any;
+        return result.access_token;
     }
 
     async doLogout() {
