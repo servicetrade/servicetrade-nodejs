@@ -1,6 +1,2 @@
-# ServiceTrade Node.js SDK
-This library provides basic wrappers for REST calls (GET, PUT, POST, DELETE) to the [ServiceTrade](https://www.servicetrade.com) API.  It also provides convenience methods for handling attachments and starting/ending sessions.
-
-Full documentation of ServiceTrade's API is available [here](https://api.servicetrade.com/api/docs).
-
-See `example.js` for a usage example
+# ServiceTrade Node.js SDK - deprecated
+This library has been deprecated and is no longer maintained.  Please use the current Node SDK at https://www.npmjs.com/package/@servicetrade/sdk.
